@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import ipdb
 from . import base
 from . import functional as F
 from ..base.modules import Activation
@@ -32,6 +32,7 @@ class DiceLoss(base.Loss):
         self.ignore_channels = ignore_channels
 
     def forward(self, y_pr, y_gt):
+        # y_gt = torch.argmax(y_gt)
         y_pr = self.activation(y_pr)
         return 1 - F.f_score(
             y_pr,

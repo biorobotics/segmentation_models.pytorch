@@ -6,6 +6,8 @@ from torch.nn.modules.loss import _Loss
 from ._functional import soft_dice_score, to_tensor
 from .constants import BINARY_MODE, MULTICLASS_MODE, MULTILABEL_MODE
 
+import ipdb
+
 __all__ = ["DiceLoss"]
 
 
@@ -57,7 +59,9 @@ class DiceLoss(_Loss):
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
 
         assert y_true.size(0) == y_pred.size(0)
-
+        #make ignore index
+        y_true = torch.argmax(y_true,dim=1)
+        
         if self.from_logits:
             # Apply activations to get [0..1] class probabilities
             # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
@@ -85,6 +89,7 @@ class DiceLoss(_Loss):
             y_pred = y_pred.view(bs, num_classes, -1)
 
             if self.ignore_index is not None:
+                # ipdb.set_trace()
                 mask = y_true != self.ignore_index
                 y_pred = y_pred * mask.unsqueeze(1)
 
