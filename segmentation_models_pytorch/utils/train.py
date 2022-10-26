@@ -48,7 +48,6 @@ class Epoch:
             disable=not (self.verbose),
         ) as iterator:
             for x, y in iterator:
-                # ipdb.set_trace()
                 x, y = x.to(self.device), y.to(self.device)
                 loss, y_pred = self.batch_update(x, y)
 
@@ -64,7 +63,6 @@ class Epoch:
                     metrics_meters[metric_fn.__name__].add(metric_value)
                 metrics_logs = {k: v.mean for k, v in metrics_meters.items()}
                 logs.update(metrics_logs)
-                ipdb.set_trace()
                 if self.verbose:
                     s = self._format_logs(logs)
                     iterator.set_postfix_str(s)

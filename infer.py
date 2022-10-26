@@ -1,37 +1,38 @@
 import os
-import torch
-import numpy as np 
 import cv2
 import copy
+import torch
+import numpy as np 
+
 import ipdb
+
+torch.seed()
+np.random.seed(42)
 
 def make_predictions(model, imagePath, labelPath, img_name, savepath, DEVICE):
 
-    savepath = savepath+'/infer'
-    if os.path.exists(savepath) == 0: os.mkdir(savepath)
     model.eval()
-
     with torch.no_grad():
         image = torch.Tensor(cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)).to(DEVICE)
-        image = torch.unsqueeze(image, dim = 0)
-        image = torch.unsqueeze(image, dim = 0)
-        image = torch.cat([image,image,image],dim=1)
+        image = torch.unsqueeze(image, dim=0)
+        image = torch.unsqueeze(image, dim=0)
+        image = torch.cat([image, image, image], dim=1)
 
         orig = copy.deepcopy(image)
-        orig = orig.cpu().numpy()[0,0,:,:].reshape(256,256,1)
-        orig = np.concatenate([orig,orig,orig],axis=-1).astype(int)
+        orig = orig.cpu().numpy()[0, 0, :, :].reshape(256, 256, 1)
+        orig = np.concatenate([orig, orig, orig], axis=-1).astype(int)
         if labelPath is not None:
             gtMask = cv2.imread(labelPath)
 
         predMask = np.zeros_like(orig)
-        predicted_model = torch.softmax(model(image),dim=1).cpu().numpy()
-        pred_mask = np.argmax(predicted_model,axis=1).squeeze(0)
+        predicted_model = torch.softmax(model(image), dim=1).cpu().numpy()
+        pred_mask = np.argmax(predicted_model, axis=1).squeeze(0)
         pred_mask_0 = np.where(pred_mask == 1)
         pred_mask_1 = np.where(pred_mask == 2)
         for i in range(pred_mask_0[0].shape[0]):
-            predMask[pred_mask_0[0][i],pred_mask_0[1][i],:] = [0,255,0]
+            predMask[pred_mask_0[0][i], pred_mask_0[1][i], :] = [0, 255, 0]
         for i in range(pred_mask_1[0].shape[0]):
-            predMask[pred_mask_1[0][i],pred_mask_1[1][i],:] = [0,0,255]
+            predMask[pred_mask_1[0][i], pred_mask_1[1][i], :] = [0, 0, 255]
         # ipdb.set_trace()
 
 
