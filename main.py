@@ -35,8 +35,8 @@ parser = argparse.ArgumentParser(description='Training')
 # Study type and data paths
 parser.add_argument('--probe', type=str, default='fukuda')
 parser.add_argument('--study_type', type=str, default='pig')
-parser.add_argument('--root_data_dir', type=str, default=str(ROOT/'dataset/pig_dataset_fukuda'))
-parser.add_argument('--saved_model_dir', type=str, default=str(ROOT/'models'))
+parser.add_argument('--root_data_dir', type=str, default='dataset/pig_dataset_fukuda')
+parser.add_argument('--saved_model_dir', type=str, default='models')
 parser.add_argument('--model_signature', type=str, default='fukuda_pig_test') #model savefile name
 parser.add_argument('--data_aug', type=bool, default=False)
 
@@ -45,21 +45,25 @@ parser.add_argument('--run_mode', type=int, default=1, help='Run Mode 0 = TRAIN;
 parser.add_argument('--encoder_name', type=str, default='resnet34')
 parser.add_argument('--encoder_weights', type=str, default='imagenet')
 parser.add_argument('--learning_rate', type=float, default=1e-4)
-parser.add_argument('--IoU_threshold', type=float, default=0.5)
+parser.add_argument('--metrics_threshold', type=float, default=0.5)
 parser.add_argument('--num_epochs', type=int, default=100)
 parser.add_argument('--early_stopping', type=bool, default=True)
 parser.add_argument('--early_stopping_patience', type=int, default=10)
 parser.add_argument('--batch_size', type=int, default=8)
 parser.add_argument('--ignore_index', type=int, default=-1, help='Default set to -1 (no ignore index). ')
-parser.add_argument('--loss_fn', type=str, default='dice_multiclass') #choose from dice_multiclass and bce_with_logits
+parser.add_argument('--loss_fn', type=str, default='dice_multiclass', help='choose from dice_multiclass and bce_with_logits')
+parser.add_argument('--metrics', type=str, default='iou_score', help='choose from iou_score and dice_score')
 parser.add_argument('--auto_infer', type=int, default=30)
 parser.add_argument('--readme', type=str, default='')
 args = parser.parse_args()
 
-if os.path.exists(args.root_data_dir) == 0:
+root_data_dir = str(ROOT/args.root_data_dir)
+saved_model_dir = str(ROOT/args.saved_model_dir)
+
+if os.path.exists(root_data_dir) == 0:
     raise ValueError('Dataset directory not found')
-if os.path.exists(args.saved_model_dir) == 0:
-    os.mkdir(args.saved_model_dir)
+if os.path.exists(saved_model_dir) == 0:
+    os.mkdir(saved_model_dir)
 
 print('\n\nTRAINING DETAILS\n')
 print('Run Mode {}\nModel Signature {}\nData Augmentation {}\nLoss Function {}\n'.format(
@@ -69,11 +73,11 @@ print('LR {}\nNumber of Epochs {}\nEarly Stopping {}\nPatience {}\nAuto Infer {}
 
 model_dir = args.model_signature
 try:
-	os.makedirs(os.path.join(args.saved_model_dir, model_dir))
+	os.makedirs(os.path.join(saved_model_dir, model_dir))
 except:
 	pass
 
-savepath = os.path.join(args.saved_model_dir, model_dir)
+savepath = os.path.join(saved_model_dir, model_dir)
 with open(savepath+'/readme.txt', 'w') as f:
     json.dump(args.__dict__, f, indent=2)
 
@@ -97,22 +101,14 @@ valid_loader = DataLoader(valid_dataset, shuffle=False,
     # num_workers=os.cpu_count())
 test_loader = DataLoader(test_dataset, shuffle=False,
     batch_size=args.batch_size)
-    # num_workers=os.cpu_count())s
+    # num_workers=os.cpu_count())
 
 len_train_data = len(train_dataset)
 len_valid_data = len(valid_dataset)
 
 
 """ Defining Model """
-if args.loss_fn == "dice_multiclass":
-    model = smp.Unet(
-                encoder_name=args.encoder_name,
-                encoder_weights=args.encoder_weights,
-                in_channels=3,
-                classes=3,
-                ).to(DEVICE)
-else:
-    model = smp.Unet(
+model = smp.Unet(
             encoder_name=args.encoder_name,
             encoder_weights=args.encoder_weights,
             in_channels=3,
@@ -121,7 +117,7 @@ else:
 preprocessing_fn = smp.encoders.get_preprocessing_fn(args.encoder_name)
 
 
-""" Loss and optimizer """
+""" Loss, metrics and optimizer """
 if args.ignore_index < 0:
     if args.loss_fn == 'bce_with_logits':
         loss = smp.losses.SoftBCEWithLogitsLoss()
@@ -132,9 +128,13 @@ else:
         loss = smp.losses.SoftBCEWithLogitsLoss(ignore_index=args.ignore_index)
     elif args.loss_fn == 'dice_multiclass':
         loss = smp.losses.DiceLoss(mode="multiclass", ignore_index=args.ignore_index)
-
 loss.__name__ = args.loss_fn
-metrics = [utils.metrics.IoU(threshold=args.IoU_threshold, ignore_channels=[0], activation='softmax')]
+
+if args.metrics == 'iou_score':
+    metrics = [utils.metrics.IoU(threshold=args.metrics_threshold, ignore_channels=[0], activation='softmax')]
+elif args.metrics == 'dice_score':
+    metrics = [utils.metrics.Fscore(threshold=args.metrics_threshold, ignore_channels=[0], activation='softmax')]
+
 optimizer = torch.optim.Adam([dict(params=model.parameters(), lr=args.learning_rate)])
 
 
@@ -164,8 +164,8 @@ if args.run_mode == 0:
         train_logs = train_epoch.run(train_loader)
         valid_logs = valid_epoch.run(valid_loader)
 
-        if max_score < valid_logs['iou_score']:
-            max_score = valid_logs['iou_score']
+        if max_score < valid_logs[args.metrics]:
+            max_score = valid_logs[args.metrics]
             torch.save(model, savepath+'/best_model.pt',_use_new_zipfile_serialization=False)
             print('New Model saved!')
             curr_patience = 0
@@ -181,7 +181,7 @@ elif args.run_mode == 1:
     auto_infer = False
     savepath = savepath+'/infer'
     if os.path.exists(savepath) == 0: os.mkdir(savepath)
-    model = torch.load(args.saved_model_dir+'/'+args.model_signature+'best_model.pt')
+    model = torch.load(saved_model_dir+'/'+model_dir+'best_model.pt')
     test_logs = valid_epoch.run(test_loader)
     test_dir = args.root_data_dir+'/test'
     images = os.listdir(test_dir+'/images')

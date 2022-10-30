@@ -25,6 +25,8 @@ class IoU(base.Metric):
 
 
 class Fscore(base.Metric):
+    __name__ = "dice_score"
+
     def __init__(self, beta=1, eps=1e-7, threshold=0.5, activation=None, ignore_channels=None, **kwargs):
         super().__init__(**kwargs)
         self.eps = eps
