@@ -1,4 +1,5 @@
 import torch
+from scipy.spatial import distance
 
 
 def _take_channels(*xs, ignore_channels=None):
@@ -17,7 +18,15 @@ def _threshold(x, threshold=None):
         return x
 
 
-def iou(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
+def _get_single_class(pr, gt):
+
+    pr_sum = torch.sum(pr, dim=1)
+    gt_sum = torch.sum(gt, dim=1)
+    
+    return pr_sum, gt_sum
+
+
+def iou(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
     """Calculate Intersection over Union between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -30,16 +39,20 @@ def iou(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
 
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
 
     intersection = torch.sum(gt * pr)
     union = torch.sum(gt) + torch.sum(pr) - intersection + eps
-    return (intersection + eps) / union
+
+    score = (intersection + eps) / union
+
+    return score.cpu().detach().numpy()
 
 
 jaccard = iou
 
 
-def f_score(pr, gt, beta=1, eps=1e-7, threshold=None, ignore_channels=None):
+def f_score(pr, gt, beta=1, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
     """Calculate F-score between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -53,6 +66,7 @@ def f_score(pr, gt, beta=1, eps=1e-7, threshold=None, ignore_channels=None):
 
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
 
     tp = torch.sum(gt * pr)
     fp = torch.sum(pr) - tp
@@ -60,10 +74,10 @@ def f_score(pr, gt, beta=1, eps=1e-7, threshold=None, ignore_channels=None):
 
     score = ((1 + beta**2) * tp + eps) / ((1 + beta**2) * tp + beta**2 * fn + fp + eps)
 
-    return score
+    return score.cpu().detach().numpy()
 
 
-def accuracy(pr, gt, threshold=0.5, ignore_channels=None):
+def accuracy(pr, gt, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate accuracy score between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -75,13 +89,15 @@ def accuracy(pr, gt, threshold=0.5, ignore_channels=None):
     """
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
 
     tp = torch.sum(gt == pr, dtype=pr.dtype)
     score = tp / gt.view(-1).shape[0]
-    return score
+    
+    return score.cpu().detach().numpy()
 
 
-def precision(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
+def precision(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
     """Calculate precision score between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -94,16 +110,17 @@ def precision(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
 
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
 
     tp = torch.sum(gt * pr)
     fp = torch.sum(pr) - tp
 
     score = (tp + eps) / (tp + fp + eps)
 
-    return score
+    return score.cpu().detach().numpy()
 
 
-def recall(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
+def recall(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
     """Calculate Recall between ground truth and prediction
     Args:
         pr (torch.Tensor): A list of predicted elements
@@ -116,10 +133,55 @@ def recall(pr, gt, eps=1e-7, threshold=None, ignore_channels=None):
 
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
 
     tp = torch.sum(gt * pr)
     fn = torch.sum(gt) - tp
 
     score = (tp + eps) / (tp + fn + eps)
 
-    return score
+    return score.cpu().detach().numpy()
+
+def euclidean_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+    """Calculate the euclidean distance between the centers of the ground truth and prediction contours
+    Args:
+        pr (torch.Tensor): predicted tensor
+        gt (torch.Tensor):  ground truth tensor
+        eps (float): epsilon to avoid zero division
+        threshold: threshold for outputs binarization
+    Returns:
+        float: euclidean distance
+    """
+
+    pr = _threshold(pr, threshold=threshold)
+    pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
+
+    pr_f = torch.flatten(pr).cpu().detach().numpy()
+    gt_f = torch.flatten(gt).cpu().detach().numpy()
+
+    dist = distance.euclidean(gt_f, pr_f)
+
+    return dist
+
+def hamming_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+    """Calculate the hamming distance between the centers of the ground truth and prediction contours
+    Args:
+        pr (torch.Tensor): predicted tensor
+        gt (torch.Tensor):  ground truth tensor
+        eps (float): epsilon to avoid zero division
+        threshold: threshold for outputs binarization
+    Returns:
+        float: hamming distance
+    """
+
+    pr = _threshold(pr, threshold=threshold)
+    pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
+    
+    pr_f = torch.flatten(pr).cpu().detach().numpy()
+    gt_f = torch.flatten(gt).cpu().detach().numpy()
+
+    dist = distance.euclidean(gt_f, pr_f)
+
+    return dist
