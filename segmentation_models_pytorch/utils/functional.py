@@ -19,14 +19,12 @@ def _threshold(x, threshold=None):
 
 
 def _get_single_class(pr, gt):
-
-    pr_sum = torch.sum(pr, dim=1)
-    gt_sum = torch.sum(gt, dim=1)
-    
+    pr_sum = torch.sum(pr, dim=1).clamp(min=0.0, max=1.0)
+    gt_sum = torch.sum(gt, dim=1).clamp(min=0.0, max=1.0)
     return pr_sum, gt_sum
 
 
-def iou(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def iou(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate Intersection over Union between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -52,7 +50,7 @@ def iou(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=Fal
 jaccard = iou
 
 
-def f_score(pr, gt, beta=1, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def f_score(pr, gt, beta=1, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate F-score between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -93,11 +91,11 @@ def accuracy(pr, gt, threshold=0.5, ignore_channels=None, single_class=False):
 
     tp = torch.sum(gt == pr, dtype=pr.dtype)
     score = tp / gt.view(-1).shape[0]
-    
+
     return score.cpu().detach().numpy()
 
 
-def precision(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def precision(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate precision score between ground truth and prediction
     Args:
         pr (torch.Tensor): predicted tensor
@@ -120,7 +118,7 @@ def precision(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_cla
     return score.cpu().detach().numpy()
 
 
-def recall(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def recall(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate Recall between ground truth and prediction
     Args:
         pr (torch.Tensor): A list of predicted elements
@@ -142,7 +140,7 @@ def recall(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=
 
     return score.cpu().detach().numpy()
 
-def euclidean_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def euclidean_distance(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate the euclidean distance between the centers of the ground truth and prediction contours
     Args:
         pr (torch.Tensor): predicted tensor
@@ -164,7 +162,7 @@ def euclidean_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, s
 
     return dist
 
-def hamming_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, single_class=False):
+def hamming_distance(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate the hamming distance between the centers of the ground truth and prediction contours
     Args:
         pr (torch.Tensor): predicted tensor
@@ -178,10 +176,41 @@ def hamming_distance(pr, gt, eps=1e-7, threshold=None, ignore_channels=None, sin
     pr = _threshold(pr, threshold=threshold)
     pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
     if single_class: pr, gt = _get_single_class(pr, gt)
-    
+
     pr_f = torch.flatten(pr).cpu().detach().numpy()
     gt_f = torch.flatten(gt).cpu().detach().numpy()
 
     dist = distance.euclidean(gt_f, pr_f)
 
     return dist
+
+
+if __name__ == '__main__':
+    import cv2
+    import matplotlib.pyplot as plt
+
+    image_path = '/home/tejasr/projects/tracir_segmentation/scratchpad/data/dummy_data2.png'
+    image = torch.Tensor(cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)/255.0)
+    label = torch.Tensor(cv2.imread(image_path))
+
+    image = torch.unsqueeze(image, dim = 0)
+
+    label_background = torch.ones_like(label[:,:,0])*255
+    label_background = label_background - label[:,:,1] - label[:,:,2]
+
+    label[:,:,0] = label_background
+
+    image = torch.stack([image, image, image], dim=0).squeeze(1)
+    # if self.preprocessing:
+    #     image = self.preprocessing(image.permute(1,2,0))
+    #     image = image.permute(2,0,1).type(torch.FloatTensor)
+    label = label.permute((2, 0, 1))/255.0
+    label = (label>0).float()
+
+    image = torch.unsqueeze(image, dim = 0)
+    label = torch.unsqueeze(label, dim = 0)
+
+    print('IoU: ', iou(label, label))
+    print('IoU (ignore channels): ', iou(label, label, ignore_channels=[0]))
+    print('IoU (single class): ', iou(label, label, single_class=True))
+    print('IoU (ignore channels, single class): ', iou(label, label, ignore_channels=[0], single_class=True))

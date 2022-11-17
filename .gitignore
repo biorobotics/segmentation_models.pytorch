@@ -1,6 +1,7 @@
 # Segmentation related files
 dataset/*
 models/*
+models_test/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
