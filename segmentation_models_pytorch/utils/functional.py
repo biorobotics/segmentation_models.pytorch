@@ -1,5 +1,6 @@
 import torch
 from scipy.spatial import distance
+import numpy as np
 
 
 def _take_channels(*xs, ignore_channels=None):
@@ -22,6 +23,31 @@ def _get_single_class(pr, gt):
     pr_sum = torch.sum(pr, dim=1).clamp(min=0.0, max=1.0)
     gt_sum = torch.sum(gt, dim=1).clamp(min=0.0, max=1.0)
     return pr_sum, gt_sum
+
+
+def directed_hausdorff(pr, gt, threshold = 0.5, single_class = False, ignore_channels = None):
+    """
+    Compute the directed Hausdorff distance between ground truth and prediction 
+    Args:
+        pr (torch.Tensor): predicted tensor
+        gt (torch.Tensor):  ground truth tensor
+        threshold: threshold for outputs binarization
+    Returns:
+        float: HD score
+    """
+    pr = _threshold(pr, threshold=threshold)
+    pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    if single_class: pr, gt = _get_single_class(pr, gt)
+
+    hds = []
+    pr, gt = pr.detach().cpu().numpy(), gt.detach().cpu().numpy() 
+
+    for batch in range(pr.shape[0]):
+        for channel in range(pr.shape[1]):
+            hds.append(distance.directed_hausdorff(pr[batch, channel, :, :], gt[batch, channel, :, :]))
+
+    return np.mean(hds)    
+
 
 
 def iou(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):

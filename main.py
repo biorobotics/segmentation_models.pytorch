@@ -16,7 +16,7 @@ import infer
 from dataset import hprobeDataset
 from dataset import FukudaDataset
 
-import ipdb
+# import ipdb
 
 torch.seed()
 np.random.seed(42)
@@ -36,13 +36,13 @@ parser = argparse.ArgumentParser(description='Training')
 # Study type and data paths
 parser.add_argument('--probe', type=str, default='fukuda')
 parser.add_argument('--study_type', type=str, default='pig')
-parser.add_argument('--root_data_dir', type=str, default='dataset/pig_dataset_fukuda3')
-parser.add_argument('--saved_model_dir', type=str, default='models')
+parser.add_argument('--root_data_dir', type=str, default='/home/nthumbav/Downloads/FUKUDA/mixed_pig_fukuda_dataset1_original')
+parser.add_argument('--saved_model_dir', type=str, default='/home/nthumbav/Downloads/myModels')
 parser.add_argument('--model_signature', type=str, default='fukuda_pig_test') #model savefile name
 parser.add_argument('--data_aug', type=bool, default=False)
 
 # Hyperparameters
-parser.add_argument('--run_mode', type=int, default=1, help='Run Mode 0 = TRAIN; Run Mode 1 = INFERENCE')
+parser.add_argument('--run_mode', type=int, default=0, help='Run Mode 0 = TRAIN; Run Mode 1 = INFERENCE')
 parser.add_argument('--single_class', type=bool, default=False)
 parser.add_argument('--encoder_name', type=str, default='resnet34')
 parser.add_argument('--encoder_weights', type=str, default='imagenet')
@@ -144,6 +144,10 @@ elif args.metrics == 'euclidean_dist':
     metrics = [utils.metrics.EuclideanDist(threshold=args.metrics_threshold, ignore_channels=[0], activation='softmax', single_class=args.single_class)]
 elif args.metrics == 'hamming_dist':
     metrics = [utils.metrics.HammingDist(threshold=args.metrics_threshold, ignore_channels=[0], activation='softmax', single_class=args.single_class)]
+elif args.metrics == 'directed_hausdorff':
+    metrics = [utils.metrics.DirectedHausdorff(threshold=args.metrics_threshold, ignore_channels=[0], activation='softmax', single_class=args.single_class)]
+
+
 
 optimizer = torch.optim.Adam([dict(params=model.parameters(), lr=args.learning_rate)])
 

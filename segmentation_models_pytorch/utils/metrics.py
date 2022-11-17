@@ -154,3 +154,23 @@ class HammingDist(base.Metric):
             ignore_channels=self.ignore_channels,
             single_class=self.single_class
         )
+
+class DirectedHausdorff(base.Metric):
+    __name__ = "directed_hausdorff"
+
+    def __init__(self, threshold=0.5, activation=None, ignore_channels=None, single_class=False, **kwargs):
+        super().__init__(**kwargs)
+        self.threshold = threshold
+        self.activation = Activation(activation)
+        self.ignore_channels = ignore_channels
+        self.single_class = single_class
+
+    def forward(self, y_pr, y_gt):
+        y_pr = self.activation(y_pr)
+        return F.directed_hausdorff(
+            y_pr,
+            y_gt,
+            threshold=self.threshold,
+            ignore_channels=self.ignore_channels,
+            single_class=self.single_class
+        )
