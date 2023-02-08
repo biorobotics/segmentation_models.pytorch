@@ -9,8 +9,6 @@ from natsort import natsorted
 from torchvision import transforms
 from torch.utils.data import Dataset
 
-import ipdb
-
 
 class FukudaDataset(Dataset):
     def __init__(self, datadir, data_aug, preproc=None):

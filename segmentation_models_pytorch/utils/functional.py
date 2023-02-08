@@ -44,7 +44,7 @@ def iou(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=Fals
 
     score = (intersection + eps) / union
 
-    return score.cpu().detach().numpy()
+    return score
 
 
 jaccard = iou
@@ -72,7 +72,7 @@ def f_score(pr, gt, beta=1, eps=1e-7, threshold=0.5, ignore_channels=None, singl
 
     score = ((1 + beta**2) * tp + eps) / ((1 + beta**2) * tp + beta**2 * fn + fp + eps)
 
-    return score.cpu().detach().numpy()
+    return score
 
 
 def accuracy(pr, gt, threshold=0.5, ignore_channels=None, single_class=False):
@@ -92,7 +92,7 @@ def accuracy(pr, gt, threshold=0.5, ignore_channels=None, single_class=False):
     tp = torch.sum(gt == pr, dtype=pr.dtype)
     score = tp / gt.view(-1).shape[0]
 
-    return score.cpu().detach().numpy()
+    return score
 
 
 def precision(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
@@ -115,7 +115,7 @@ def precision(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_clas
 
     score = (tp + eps) / (tp + fp + eps)
 
-    return score.cpu().detach().numpy()
+    return score
 
 
 def recall(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
@@ -138,7 +138,7 @@ def recall(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=F
 
     score = (tp + eps) / (tp + fn + eps)
 
-    return score.cpu().detach().numpy()
+    return score
 
 def euclidean_distance(pr, gt, eps=1e-7, threshold=0.5, ignore_channels=None, single_class=False):
     """Calculate the euclidean distance between the centers of the ground truth and prediction contours

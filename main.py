@@ -74,7 +74,7 @@ print('Run Mode {}\nModel Signature {}\nData Augmentation {}\nLoss Function {}\n
 print('LR {}\nNumber of Epochs {}\nEarly Stopping {}\nPatience {}\nAuto Infer {}'.format(
     args.learning_rate, args.num_epochs, args.early_stopping, args.early_stopping_patience, args.auto_infer))
 
-model_dir = args.model_signature
+model_dir = args.model_signature + NOW
 try:
 	os.makedirs(os.path.join(saved_model_dir, model_dir))
 except:
@@ -109,9 +109,6 @@ valid_loader = DataLoader(valid_dataset, shuffle=False,
 test_loader = DataLoader(test_dataset, shuffle=False,
     batch_size=args.batch_size)
     # num_workers=os.cpu_count())
-
-# len_train_data = len(train_dataset)
-# len_valid_data = len(valid_dataset)
 
 
 """ Defining Model """
